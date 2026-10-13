@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tareas Completo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 30px auto; padding: 0 20px; }
+        section { margin-bottom: 25px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        label { display: block; margin-top: 8px; font-weight: bold; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 6px; margin-top: 4px; margin-bottom: 10px; box-sizing: border-box; }
+        button { padding: 6px 12px; background-color: #007BFF; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; }
+        button:hover { background-color: #0056b3; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-danger:hover { background-color: #a71d2a; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Gestor de Tareas — CRUD Completo</h1>
+        <p>Conectado a Spring Boot (En memoria)</p>
+    </header>
+
+    <main>
+        <!-- 1. CREAR TAREA (POST) -->
+        <section>
+            <h2>Crear Nueva Tarea (POST)</h2>
+            <form id="form-crear">
+                <label for="titulo-crear">Título:</label>
+                <input type="text" id="titulo-crear" placeholder="Ej. Estudiar Spring Boot" required>
+                <button type="submit">Guardar Tarea</button>
+            </form>
+        </section>
+
+        <!-- 2. BUSCAR POR ID (GET /tareas/{id}) -->
+        <section>
+            <h2>Buscar Tarea por ID (GET)</h2>
+            <form id="form-buscar">
+                <label for="id-buscar">ID de la tarea:</label>
+                <input type="number" id="id-buscar" placeholder="Ej. 1" required>
+                <button type="submit">Buscar</button>
+            </form>
+            <article id="resultado-busqueda">
+                <!-- Aquí se muestra el resultado de la búsqueda por ID -->
+            </article>
+        </section>
+
+        <!-- 3. ACTUALIZAR TAREA (PUT) -->
+        <section>
+            <h2>Actualizar Tarea (PUT)</h2>
+            <form id="form-actualizar">
+                <label for="id-actualizar">ID de la tarea a modificar:</label>
+                <input type="number" id="id-actualizar" placeholder="Ej. 1" required>
+                
+                <label for="titulo-actualizar">Nuevo Título:</label>
+                <input type="text" id="titulo-actualizar" placeholder="Nuevo título" required>
+                
+                <label>
+                    <input type="checkbox" id="completada-actualizar"> ¿Completada?
+                </label>
+                <button type="submit">Actualizar Tarea</button>
+            </form>
+        </section>
+
+        <!-- 4. LISTAR Y ELIMINAR (GET /tareas y DELETE /tareas/{id}) -->
+        <section>
+            <h2>Lista de Tareas Registradas</h2>
+            <button onclick="cargarTareas()">Refrescar Lista</button>
+            <ul id="lista-tareas">
+                <!-- Se llenará dinámicamente con JS -->
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p><small>Práctica integral para Quiz de Spring Boot</small></p>
+    </footer>
+
+    <script>
+        const API_URL = 'http://localhost:8080/tareas';
+
+        // --- 1. GET: Listar todas ---
+        async function cargarTareas() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Error al listar tareas');
+                
+                const tareas = await response.json();
+                const lista = document.getElementById('lista-tareas');
+                lista.innerHTML = '';
+
+                tareas.forEach(tarea => {
+                    const item = document.createElement('li');
+                    item.innerHTML = `
+                        <strong>ID:</strong> ${tarea.id} | 
+                        <strong>Título:</strong> ${tarea.titulo} | 
+                        <strong>Completada:</strong> ${tarea.completada} 
+                        <button class="btn-danger" onclick="eliminarTarea(${tarea.id})">Eliminar</button>
+                    `;
+                    lista.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // --- 2. POST: Crear tarea ---
+        document.getElementById('form-crear').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const titulo = document.getElementById('titulo-crear').value;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ titulo: titulo, completada: false })
+                });
+
+                if (!response.ok) throw new Error('Error al crear tarea');
+                
+                document.getElementById('titulo-crear').value = '';
+                cargarTareas();
+                alert('¡Tarea creada con éxito!');
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        // --- 3. GET por ID: Buscar tarea específica ---
+        document.getElementById('form-buscar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('id-buscar').value;
+            const contenedor = document.getElementById('resultado-busqueda');
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`);
+                if (!response.ok) throw new Error('No se encontró la tarea');
+                
+                const tarea = await response.json();
+                if (!tarea || !tarea.id) {
+                    contenedor.innerHTML = '<p>Tarea no encontrada.</p>';
+                    return;
+                }
+
+                contenedor.innerHTML = `
+                    <p><strong>Encontrada:</strong> ID: ${tarea.id} — Título: ${tarea.titulo} — Completada: ${tarea.completada}</p>
+                `;
+            } catch (error) {
+                contenedor.innerHTML = '<p style="color: red;">Error: Tarea no encontrada o ID inválido.</p>';
+            }
+        });
+
+        // --- 4. PUT: Actualizar tarea ---
+        document.getElementById('form-actualizar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('id-actualizar').value;
+            const titulo = document.getElementById('titulo-actualizar').value;
+            const completada = document.getElementById('completada-actualizar').checked;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: Number(id), titulo: titulo, completada: completada })
+                });
+
+                if (!response.ok) throw new Error('Error al actualizar');
+
+                cargarTareas();
+                alert('¡Tarea actualizada con éxito!');
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        // --- 5. DELETE: Eliminar tarea por ID ---
+        async function eliminarTarea(id) {
+            if (!confirm(`¿Estás seguro de eliminar la tarea con ID ${id}?`)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Error al eliminar');
+
+                cargarTareas();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Cargar las tareas al iniciar la página
+        window.addEventListener('DOMContentLoaded', cargarTareas);
+    </script>
+
+</body>
+</html>
